@@ -1,0 +1,3 @@
+input,categorie,priorite,reponse_suggeree,source
+"Besoin de le catalogue pour [NOM] avant mon RDV de 17h, c'est urgent.",Information générale,haute,Voici le catalogue demandé. Je reste disponible pour votre RDV.,synthetic
+"Besoin de la fiche technique pour la direction avant mon RDV de 15h, c'est urgent.",Information générale,haute,Voici la fiche technique demandé. Je reste disponible pour votre RDV.,synthetic
