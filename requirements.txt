@@ -1,10 +1,10 @@
-# Module 3 — Multi-source, intégration et enrichissement
+# Module 4 — Concevoir une IA simple : évaluation, robustesse et architecture
 # Environnement Python recommandé : 3.11
 #
-# Surcouche au requirements.txt du M2 : on garde l'existant et on ajoute
-# ce qu'il faut pour les briefs M3.
+# Surcouche au requirements.txt du M3 : on garde l'existant et on ajoute
+# ce qu'il faut pour les briefs M4.
 
-# ---------- Repris du M2 ----------
+# ---------- Repris du M3 ----------
 pandas>=2.2
 numpy>=1.26
 matplotlib>=3.8
@@ -15,40 +15,47 @@ loguru>=0.7
 pytest>=8.0
 pytest-cov>=5.0
 sqlalchemy>=2.0
-psycopg[binary]>=3.1   # PostgreSQL — retirer si MySQL choisi
-# pymysql>=1.1         # décommenter si MySQL choisi
-alembic>=1.13          # devient obligatoire en M3 (migrations B1, B2, B3)
-
-# ---------- Validation et modèles ----------
+psycopg[binary]>=3.1
+alembic>=1.13
 pydantic>=2.6
-
-# ---------- Ingestion email (B1) ----------
-# 'mailbox' et 'email' sont dans la stdlib — rien à installer
-beautifulsoup4>=4.12   # fallback HTML → texte pour les emails multipart
-lxml>=5.0              # parser rapide pour bs4
-chardet>=5.2           # détection d'encodage des emails legacy
-
-# ---------- Ingestion web et chat (B2) ----------
-# JSON et CSV : stdlib + pandas — rien de nouveau
-
-# ---------- Déduplication (B2) ----------
-datasketch>=1.6        # MinHash / LSH (bonus B2)
-
-# ---------- NoSQL (bonus B2) ----------
-pymongo>=4.6           # source MongoDB optionnelle
-
-# ---------- Enrichissement (B3) ----------
-langdetect>=1.0.9      # détection de langue baseline
-# fasttext>=0.9.2      # alternative robuste — décommenter si retenu
-#                      # nécessite le modèle lid.176.bin à télécharger à part
-
-# Sentiment FR (B3) — optionnel selon l'option choisie
+beautifulsoup4>=4.12
+lxml>=5.0
+chardet>=5.2
+langdetect>=1.0.9
 transformers>=4.40
 torch>=2.2
-
-# ---------- Embeddings légers (bonus B2 dédup sémantique) ----------
 sentence-transformers>=2.7
-
-# ---------- HTTP / API externe ----------
 httpx>=0.27
 python-dotenv>=1.0
+
+# ---------- Benchmark langue (B1) ----------
+# langdetect déjà inclus ci-dessus
+# fasttext>=0.9.2       # décommenter si lid.176.bin retenu — nécessite compilation C++
+# alternative : fasttext-langdetect>=1.0.5  # wrapper simplifié sans compilation
+
+# ---------- Benchmark sentiment (B1) ----------
+# transformers + torch déjà inclus ci-dessus
+# cmarkea/distilcamembert-base-sentiment — téléchargé via HuggingFace Hub
+# nlptown/bert-base-multilingual-uncased-sentiment — idem
+
+# ---------- Métriques (B1) ----------
+scikit-learn>=1.4
+
+# ---------- Mesure de performance / éco-conception (B1) ----------
+psutil>=5.9              # mesure RAM consommée par modèle
+# codecarbon>=2.3       # décommenter pour mesure carbone (bonus)
+
+# ---------- Sécurité / adversarial (B1) ----------
+confusables>=1.2         # détection homoglyphes Unicode
+
+# ---------- Architecture et conception (B2) ----------
+# alembic déjà inclus — pour la migration proposée
+# pydantic déjà inclus — pour les schémas API enrichis
+fastapi>=0.111
+uvicorn>=0.29
+
+# ---------- Diagrammes (B2 — optionnel, pour export Mermaid) ----------
+# mermaid-py>=0.4       # décommenter si génération programmatique souhaitée
+
+# ---------- MLflow (traçabilité modèles candidats) ----------
+mlflow>=2.12

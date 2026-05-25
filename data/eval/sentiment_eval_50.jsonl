@@ -1,0 +1,50 @@
+{"text": "Combien de temps faut-il en moyenne pour déployer votre solution dans une entreprise de taille moyenne ?", "sentiment": "neutre"}
+{"text": "Bonjour, notre application de gestion RH plante depuis ce matin, impossible de se connecter. Toute l'équipe est bloquée.", "sentiment": "negatif"}
+{"text": "Quelle est la durée minimale d'engagement pour vos contrats de service ?", "sentiment": "neutre"}
+{"text": "Notre direction souhaite une démonstration de votre plateforme MLOps pour un comité la semaine prochaine.", "sentiment": "positif"}
+{"text": "Bonjour, comment configurer l'authentification SSO avec notre Active Directory ?", "sentiment": "neutre"}
+{"text": "Un de vos consultants a partagé des informations confidentielles de notre entreprise avec un tiers, nous exigeons des explications.", "sentiment": "negatif"}
+{"text": "Depuis la migration vers la nouvelle version, certains utilisateurs ne voient plus leurs historiques.", "sentiment": "negatif"}
+{"text": "L'application mobile plante au démarrage sur les appareils Android 14.", "sentiment": "negatif"}
+{"text": "URGENT : faille de sécurité détectée sur notre API exposée, des données clients pourraient être compromises.", "sentiment": "negatif"}
+{"text": "Pouvez-vous m'expliquer la différence entre vos offres Standard et Enterprise ?", "sentiment": "neutre"}
+{"text": "Le compte rendu de réunion envoyé par votre consultant contient des erreurs factuelles importantes.", "sentiment": "negatif"}
+{"text": "Nous avons été facturés deux fois pour le même service ce mois-ci.", "sentiment": "negatif"}
+{"text": "La facture que vous nous avez envoyée comporte des erreurs, les montants ne correspondent pas au contrat signé.", "sentiment": "negatif"}
+{"text": "Quels langages de programmation sont supportés par votre API ?", "sentiment": "neutre"}
+{"text": "L'intégration que vous avez réalisée avec notre ERP crée des doublons dans notre base de données.", "sentiment": "negatif"}
+{"text": "Bonjour, quelles sont vos certifications en matière de sécurité des données ?", "sentiment": "neutre"}
+{"text": "Nous souhaitons intégrer votre solution dans notre offre revendue à nos clients, quelles sont vos conditions de partenariat revendeur ?", "sentiment": "neutre"}
+{"text": "Avez-vous une offre spécifique pour le secteur public et les collectivités territoriales ?", "sentiment": "neutre"}
+{"text": "Notre projet a pris 2 mois de retard sans que personne ne nous ait informés, nous envisageons d'appliquer les pénalités prévues au contrat.", "sentiment": "negatif"}
+{"text": "Bonjour, où sont hébergées vos données ? En Europe ?", "sentiment": "neutre"}
+{"text": "Les graphiques du tableau de bord ne se chargent pas, il y a juste un cercle qui tourne.", "sentiment": "negatif"}
+{"text": "Est-ce que vous faites des tarifs préférentiels pour les startups en phase d'amorçage ?", "sentiment": "neutre"}
+{"text": "Notre concurrent vient de lancer une offre IA, nous devons accélérer notre propre transformation pour ne pas perdre des parts de marché.", "sentiment": "negatif"}
+{"text": "Pouvez-vous nous envoyer une plaquette commerciale de vos services pour la présenter à notre direction ?", "sentiment": "positif"}
+{"text": "L'interface s'affiche mal sur Safari, certains boutons se superposent.", "sentiment": "negatif"}
+{"text": "Le consultant assigné à notre projet a été remplacé sans préavis ni passation, nous avons perdu plusieurs semaines.", "sentiment": "negatif"}
+{"text": "Les notifications push ne s'envoient plus depuis hier soir sur notre application mobile.", "sentiment": "negatif"}
+{"text": "Nous faisons face à une pression réglementaire forte sur la traçabilité de nos données, il nous faut une solution rapidement.", "sentiment": "negatif"}
+{"text": "Je souhaite renouveler notre contrat annuel qui arrive à échéance le mois prochain.", "sentiment": "neutre"}
+{"text": "Nous envisageons de migrer vers votre plateforme depuis un concurrent, quels sont les engagements de service que vous proposez ?", "sentiment": "neutre"}
+{"text": "Nous souhaitons explorer comment l'IA générative pourrait améliorer notre relation client.", "sentiment": "neutre"}
+{"text": "Nous aimerions conduire un audit de notre maturité IA avant de définir notre feuille de route.", "sentiment": "neutre"}
+{"text": "La recherche plein texte dans le module documentaire est très lente, plus de 30 secondes par requête.", "sentiment": "negatif"}
+{"text": "Bonjour, nous réfléchissons à automatiser notre processus de reporting mensuel, est-ce que l'IA peut nous aider ?", "sentiment": "neutre"}
+{"text": "Pouvez-vous nous proposer un accompagnement sur site pour le déploiement initial de votre solution ?", "sentiment": "neutre"}
+{"text": "Le bouton d'export Excel dans le tableau de bord ne répond pas, mais le reste fonctionne bien.", "sentiment": "negatif"}
+{"text": "Nous souhaitons co-construire une vision IA à 3 ans avec notre comité de direction.", "sentiment": "neutre"}
+{"text": "Quel est votre processus d'onboarding pour les nouveaux clients ?", "sentiment": "neutre"}
+{"text": "Le module de facturation affiche des montants arrondis incorrectement sur certaines lignes.", "sentiment": "negatif"}
+{"text": "Est-ce que votre solution peut fonctionner en mode déconnecté ou on-premise ?", "sentiment": "neutre"}
+{"text": "Nous avons un appel d'offres public auquel nous souhaitons répondre avec votre solution, pouvez-vous nous fournir les éléments nécessaires ?", "sentiment": "neutre"}
+{"text": "Notre DSI souhaite définir une architecture cible pour intégrer l'IA dans notre SI existant.", "sentiment": "neutre"}
+{"text": "Est-il possible d'augmenter la taille maximale des fichiers importables dans l'application ?", "sentiment": "neutre"}
+{"text": "Nous souhaitons étendre notre contrat actuel à trois nouvelles entités du groupe dès le mois prochain.", "sentiment": "neutre"}
+{"text": "Notre pipeline de données s'est arrêté cette nuit, les rapports du matin sont vides.", "sentiment": "negatif"}
+{"text": "Je ne retrouve pas l'option pour désactiver les alertes email dans mon profil.", "sentiment": "negatif"}
+{"text": "Notre direction générale a validé un budget pour déployer l'IA dans nos opérations, nous cherchons un pilote à lancer dans les 30 jours.", "sentiment": "neutre"}
+{"text": "Est-ce qu'il est possible d'avoir accès à la documentation technique de votre API REST ?", "sentiment": "neutre"}
+{"text": "Dans quels pays proposez-vous vos services ?", "sentiment": "neutre"}
+{"text": "Bonjour, j'ai un petit souci avec mon mot de passe, je n'arrive pas à le réinitialiser via le formulaire.", "sentiment": "negatif"}
