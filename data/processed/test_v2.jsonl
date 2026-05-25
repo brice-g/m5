@@ -1,0 +1,23 @@
+{"text":"<s>[INST] Quel est votre processus d'onboarding pour les nouveaux clients ? [\/INST] 2 <\/s>"}
+{"text":"<s>[INST] L'interface s'affiche mal sur Safari, certains boutons se superposent. [\/INST] 4 <\/s>"}
+{"text":"<s>[INST] Nous souhaitons co-construire une vision IA à 3 ans avec notre comité de direction. [\/INST] 1 <\/s>"}
+{"text":"<s>[INST] Nous souhaitons intégrer votre solution dans notre offre revendue à nos clients, quelles sont vos conditions de partenariat revendeur ? [\/INST] 0 <\/s>"}
+{"text":"<s>[INST] Le compte rendu de réunion envoyé par votre consultant contient des erreurs factuelles importantes. [\/INST] 3 <\/s>"}
+{"text":"<s>[INST] Petit bug : le filtre par date dans les rapports ne prend pas en compte le mois de janvier. [\/INST] 4 <\/s>"}
+{"text":"<s>[INST] Nous avons un projet urgent de transformation digitale à démarrer en janvier, pouvez-vous nous proposer une offre rapidement ? [\/INST] 0 <\/s>"}
+{"text":"<s>[INST] Besoin de le rapport pour la direction avant mon RDV de 14h, c'est urgent. [\/INST] 2 <\/s>"}
+{"text":"<s>[INST] Besoin de le catalogue pour [NOM] avant mon RDV de 14h, c'est urgent. [\/INST] 2 <\/s>"}
+{"text":"<s>[INST] Besoin de le catalogue pour un client avant mon RDV de 17h, c'est urgent. [\/INST] 2 <\/s>"}
+{"text":"<s>[INST] Bonjour, quelles sont vos certifications en matière de sécurité des données ? [\/INST] 2 <\/s>"}
+{"text":"<s>[INST] URGENT : l'API [URL] renvoie des erreurs 500 depuis 10h. Notre CTO [NAME] ([EMAIL]) a besoin d'un retour immédiat. [\/INST] 4 <\/s>"}
+{"text":"<s>[INST] Nous faisons face à une pression réglementaire forte sur la traçabilité de nos données, il nous faut une solution rapidement. [\/INST] 1 <\/s>"}
+{"text":"<s>[INST] Besoin de le rapport pour [NOM] avant mon RDV de 17h, c'est urgent. [\/INST] 2 <\/s>"}
+{"text":"<s>[INST] Nous voulons mettre en place une gouvernance de la donnée avant de lancer nos projets IA. [\/INST] 1 <\/s>"}
+{"text":"<s>[INST] Les emails de confirmation de commande ne partent plus depuis ce weekend. [\/INST] 4 <\/s>"}
+{"text":"<s>[INST] Dans quels pays proposez-vous vos services ? [\/INST] 2 <\/s>"}
+{"text":"<s>[INST] URGENT : J'ai besoin des tarifs immédiatement pour un client en attente. [\/INST] 0 <\/s>"}
+{"text":"<s>[INST] Nous souhaitons étendre notre contrat actuel à trois nouvelles entités du groupe dès le mois prochain. [\/INST] 0 <\/s>"}
+{"text":"<s>[INST] J'ai été facturé deux fois ce mois-ci pour le même abonnement. Merci de me contacter rapidement au [PHONE]. [\/INST] 3 <\/s>"}
+{"text":"<s>[INST] URGENT : faille de sécurité détectée sur notre API exposée, des données clients pourraient être compromises. [\/INST] 4 <\/s>"}
+{"text":"<s>[INST] Un de vos consultants a partagé des informations confidentielles de notre entreprise avec un tiers, nous exigeons des explications. [\/INST] 3 <\/s>"}
+{"text":"<s>[INST] Les performances de votre solution sont très en deçà des engagements contractuels, nous demandons une remédiation formelle. [\/INST] 3 <\/s>"}

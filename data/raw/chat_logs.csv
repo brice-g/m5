@@ -1,0 +1,50 @@
+session_id,timestamp,role,message
+CHAT-9920,2026-04-06T08:58:11Z,visitor,bonjour
+CHAT-9920,2026-04-06T08:58:14Z,visitor,je n arrive pas a me connecter
+CHAT-9920,2026-04-06T08:58:32Z,agent,Bonjour ! Pouvez-vous préciser le message d'erreur affiché ?
+CHAT-9920,2026-04-06T08:59:02Z,visitor,erreur 502 quand je clique sur connexion sso
+CHAT-9920,2026-04-06T08:59:48Z,agent,"Merci, je transfère votre cas au support technique avec votre identifiant. Vous serez recontacté(e) sous 1h."
+CHAT-9920,2026-04-06T09:00:12Z,visitor,merci
+CHAT-9921,2026-04-06T10:22:01Z,visitor,combien coute l offre pro ?
+CHAT-9921,2026-04-06T10:22:18Z,agent,Bonjour ! L'offre Pro est à 29€/mois/utilisateur. Souhaitez-vous une démo ?
+CHAT-9921,2026-04-06T10:22:44Z,visitor,non c bon merci
+CHAT-9922,2026-04-06T14:11:09Z,visitor,jai un probleme
+CHAT-9922,2026-04-06T14:11:11Z,visitor,grave
+CHAT-9922,2026-04-06T14:11:14Z,visitor,jai paye 2 fois
+CHAT-9922,2026-04-06T14:11:48Z,agent,"Bonjour, je comprends. Pouvez-vous me donner les références des deux factures ?"
+CHAT-9922,2026-04-06T14:12:20Z,visitor,FA-2026-0312 et FA-2026-0344 mh.vallet@example.com
+CHAT-9922,2026-04-06T14:12:55Z,agent,"Bien noté Marie-Hélène, je remonte au service facturation immédiatement. Vous aurez un retour sous 24h."
+CHAT-9923,2026-04-07T09:03:12Z,visitor,"hello, do you support english chat ?"
+CHAT-9923,2026-04-07T09:03:34Z,agent,"Hi! Yes I can help in English, what would you need?"
+CHAT-9923,2026-04-07T09:04:01Z,visitor,we want to test fastia for our team in london
+CHAT-9923,2026-04-07T09:04:33Z,agent,Great! I'll send you a 14-day trial link by email. Could you confirm your work email?
+CHAT-9923,2026-04-07T09:05:02Z,visitor,john.smith@corp-uk.co.uk
+CHAT-9924,2026-04-07T11:15:00Z,agent,"Bonjour, je vois que vous êtes connecté(e) au workspace projet-toulouse. Avez-vous besoin d'aide ?"
+CHAT-9924,2026-04-07T11:15:48Z,visitor,oui mes données ont disparu
+CHAT-9924,2026-04-07T11:16:02Z,visitor,toute la conversation d hier est vide
+CHAT-9924,2026-04-07T11:16:39Z,agent,Pouvez-vous me donner l'identifiant exact du workspace ? Je vais vérifier les sauvegardes.
+CHAT-9924,2026-04-07T11:17:11Z,visitor,projet-toulouse-2026 cest urgent on livre vendredi
+CHAT-9925,2026-04-08T16:44:01Z,visitor,bonjour
+CHAT-9925,2026-04-08T16:44:30Z,visitor,question rgpd
+CHAT-9925,2026-04-08T16:44:44Z,visitor,vos données sont stockées où ?
+CHAT-9925,2026-04-08T16:45:21Z,agent,"Bonjour, nos données clients sont hébergées en région europe-west (Belgique) chez OVH. Notre PRA est documenté ici : https://fastia.io/security"
+CHAT-9925,2026-04-08T16:46:02Z,visitor,parfait merci
+CHAT-9926,2026-04-09T07:30:11Z,visitor,test
+CHAT-9926,2026-04-09T07:30:14Z,visitor,test
+CHAT-9926,2026-04-09T07:30:18Z,visitor,test
+CHAT-9927,2026-04-09T13:01:00Z,agent,Bonjour ! Comment puis-je vous aider ?
+CHAT-9927,2026-04-09T13:01:38Z,visitor,j ai perdu mon mot de passe et l email de reset n arrive pas
+CHAT-9927,2026-04-09T13:01:55Z,visitor,j ai vérifié les spams
+CHAT-9927,2026-04-09T13:02:30Z,agent,"Quel est l'email associé à votre compte ?"
+CHAT-9927,2026-04-09T13:02:55Z,visitor,julie.amrani@example.com
+CHAT-9927,2026-04-09T13:03:40Z,agent,"Le compte est bien là, je relance l'envoi manuellement. Si rien dans 5 min, dites-le moi."
+CHAT-9927,2026-04-09T13:08:12Z,visitor,c bon je l ai recu merci !
+CHAT-9928,2026-04-09T15:48:22Z,visitor,hola
+CHAT-9928,2026-04-09T15:48:28Z,visitor,necesito ayuda con la facturacion
+CHAT-9928,2026-04-09T15:48:51Z,visitor,podemos pagar en euros desde españa ?
+CHAT-9928,2026-04-09T15:49:33Z,agent,"¡Hola! Sí, aceptamos pagos en EUR desde toda la zona SEPA, incluida España. ¿Necesita una factura específica para Hacienda?"
+CHAT-9928,2026-04-09T15:50:11Z,visitor,si formato facturae por favor
+CHAT-9929,2026-04-10T10:02:09Z,visitor,vous avez bien recu mon mail d hier ?
+CHAT-9929,2026-04-10T10:02:14Z,visitor,je n ai pas eu de retour
+CHAT-9929,2026-04-10T10:02:51Z,agent,"Bonjour, pouvez-vous me préciser votre email ou un identifiant pour retrouver le ticket ?"
+CHAT-9930,2026-04-10T18:55:00Z,visitor,bonsoir je voudrais resilier mon compte

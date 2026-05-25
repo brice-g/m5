@@ -1,0 +1,19 @@
+{
+    "pipeline_execution_date": "2026-04-28T11:04:16.856742",
+    "input_file": "dataset_fastia_module1.jsonl",
+    "output_file": "dataset_fastia_clean_v1.jsonl",
+    "parameters": {
+        "min_length_threshold": 10,
+        "ner_model": "fr_core_news_lg"
+    },
+    "stats": {
+        "rows_before": 96,
+        "rows_after": 96,
+        "rows_removed": 0,
+        "outliers_detected": 1
+    },
+    "hashes": {
+        "input_sha256": "b9b2c3c65294ca216788d40a17cdb4ea53429523626c54bd605979c4843f4c3b",
+        "output_sha256": "48d783412e40589a472058d1fb0f0be4b56fad41ea4460688d9faf106a5950d6"
+    }
+}

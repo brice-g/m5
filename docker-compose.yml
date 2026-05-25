@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:15
+    container_name: fastia_db
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER:-user_fastia}
+      - POSTGRES_PASSWORD=${DB_PASS:-password_fastia}
+      - POSTGRES_DB=${DB_NAME:-fastia_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - ./src/pipeline/storage/schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

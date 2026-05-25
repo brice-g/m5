@@ -1,0 +1,61 @@
+idx,contenu,categorie_ok,priorite_ok,reponse_ok,contient_pii,commentaire
+0,"Demande commerciale | haute
+input : Bonjour, nous souhaitons obtenir un devis pour l'intégration de votre solution IA dans notre CRM Salesforce.
+reponse : Merci pour votre intérêt. Notre équipe commerciale va vous recontacter dans les 24h pour qualifier votre besoin et établir une proposition adaptée.",True,True,True,False,
+1,"Demande commerciale | haute
+input : Nous avons un projet urgent de transformation digitale à démarrer en janvier, pouvez-vous nous proposer une offre rapidement ?
+reponse : Nous prenons en compte l'urgence de votre projet. Un consultant senior vous contacte aujourd'hui pour cadrer le besoin et vous soumettre une proposition sous 48h.",True,True,True,False,
+2,"Demande commerciale | normale
+input : Pouvez-vous nous envoyer une plaquette commerciale de vos services pour la présenter à notre direction ?
+reponse : Bien sûr, nous vous envoyons notre plaquette commerciale par retour de message. N'hésitez pas si vous souhaitez un rendez-vous de présentation.",True,True,True,False,
+3,"Demande commerciale | haute
+input : Nous avons un appel d'offres public auquel nous souhaitons répondre avec votre solution, pouvez-vous nous fournir les éléments nécessaires ?
+reponse : Nous sommes disponibles pour vous accompagner dans cet appel d'offres. Notre équipe avant-vente vous contacte pour préparer les éléments techniques et commerciaux nécessaires.",True,True,True,False,
+4,"Demande de transformation | haute
+input : Notre organisation souhaite engager FastIA pour piloter la refonte complète de notre système d'information, par où commencer ?
+reponse : Un projet de cette envergure mérite un cadrage approfondi. Nous proposons de démarrer par un atelier de diagnostic stratégique avec vos parties prenantes clés.",True,True,True,False,
+5,"Demande de transformation | haute
+input : Nous devons digitaliser nos processus métier d'ici fin d'année pour rester compétitifs, pouvez-vous nous accompagner ?
+reponse : Votre échéance de fin d'année est réaliste avec un démarrage rapide. Nous vous proposons un premier rendez-vous cette semaine pour lancer le cadrage.",True,True,True,False,
+6,"Demande de transformation | haute
+input : Nous souhaitons lancer un chantier de transformation de notre supply chain avec l'IA, avec un go-live prévu dans 6 mois.
+reponse : Un projet supply chain IA sur 6 mois est ambitieux mais réalisable. Notre expert vous contacte pour cadrer le périmètre et construire le plan de route.",True,True,True,False,
+7,"Demande de transformation | normale
+input : Monsieur Martin à l'appareil, responsable SI chez NovaTech. Nous souhaitons migrer vers votre offre cloud, merci de me rappeler au 01.45.67.89.12.
+reponse : Projet de migration cloud bien noté. Notre architecte solutions vous recontactera pour qualifier vos besoins et planifier un atelier de cadrage.",True,True,True,True,PII détecté
+8,"Information générale | normale
+input : Bonjour, quelles sont vos certifications en matière de sécurité des données ?
+reponse : FastIA est certifiée ISO 27001 et conforme RGPD. Notre équipe vous enverra le détail de nos certifications et notre politique de sécurité des données.",True,True,True,False,
+9,"Information générale | normale
+input : Est-ce que vos solutions respectent le RGPD et quelles garanties proposez-vous ?
+reponse : Nos solutions sont conçues privacy by design et conformes RGPD. Nous signons systématiquement un DPA avec nos clients. Notre DPO peut vous fournir toutes les garanties nécessaires.",True,True,True,False,
+10,"Information générale | normale
+input : Est-ce que FastIA propose des services de data labelling pour constituer des jeux de données d'entraînement ?
+reponse : Oui, nous proposons des services de data labelling via nos partenaires spécialisés. Notre équipe peut vous présenter les modalités et les tarifs associés.",True,True,True,False,
+11,"Information générale | normale
+input : Pouvez-vous m'expliquer la différence entre vos offres Standard et Enterprise ?
+reponse : Nos offres Standard et Enterprise diffèrent principalement sur le niveau de support, les SLA et les options de personnalisation. Notre équipe vous enverra la grille comparative détaillée.",True,True,True,False,
+12,"Réclamation | haute
+input : Votre équipe nous a livré un module qui ne correspond absolument pas aux spécifications validées, c'est inadmissible.
+reponse : Nous prenons votre réclamation très au sérieux. Notre responsable projet vous contacte dans l'heure pour faire le point et définir les actions correctives immédiates.",True,True,True,False,
+13,"Réclamation | haute
+input : Cela fait trois semaines que j'attends une réponse à mon ticket de support, c'est inacceptable.
+reponse : Nous vous présentons nos sincères excuses pour ce délai anormal. Votre ticket est escaladé immédiatement et un responsable vous contacte dans l'heure.",True,True,True,False,
+14,"Réclamation | haute
+input : Un de vos consultants a partagé des informations confidentielles de notre entreprise avec un tiers, nous exigeons des explications.
+reponse : Cette situation est extrêmement sérieuse. Notre direction est immédiatement alertée et vous contacte dans l'heure pour une gestion transparente de cet incident.",True,True,True,False,
+15,"Réclamation | haute
+input : Bonjour, je suis Madame Dupont, cliente depuis 3 ans. Ma dernière facture est erronée de 240€. Merci de me rappeler au 06 12 34 56 78 ou par mail à marie.dupont@example.fr.
+reponse : Nous prenons immédiatement en charge votre réclamation de facturation. Notre service comptabilité vous recontactera sous 24h au numéro communiqué pour procéder à la régularisation.",True,True,True,True,PII détecté
+16,"Support technique | haute
+input : Bonjour, notre application de gestion RH plante depuis ce matin, impossible de se connecter. Toute l'équipe est bloquée.
+reponse : Nous prenons en charge votre incident en priorité. Notre équipe technique est mobilisée et reviendra vers vous dans l'heure avec un diagnostic.",True,True,True,False,
+17,"Support technique | normale
+input : Est-il possible d'augmenter la taille maximale des fichiers importables dans l'application ?
+reponse : Cette configuration est ajustable selon votre abonnement. Nous vous contactons pour faire le point sur vos besoins et les options disponibles.",True,True,True,False,
+18,"Support technique | normale
+input : Est-ce qu'il est possible d'avoir accès à la documentation technique de votre API REST ?
+reponse : Bien sûr, notre documentation API complète est disponible sur notre portail développeur. Nous vous envoyons le lien d'accès par retour de message.",True,True,True,False,
+19,"Support technique | haute
+input : Le serveur de production est tombé il y a 30 minutes, nos clients ne peuvent plus accéder au service.
+reponse : Incident critique enregistré. Nous escaladons immédiatement auprès de notre équipe infrastructure. Un point de situation vous sera communiqué dans 15 minutes.",True,True,True,False,

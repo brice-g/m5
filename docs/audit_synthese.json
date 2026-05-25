@@ -1,0 +1,22 @@
+{
+  "n_exemples": 96,
+  "distribution_categories": {
+    "Support technique": 22,
+    "Information générale": 22,
+    "Demande commerciale": 18,
+    "Demande de transformation": 17,
+    "Réclamation": 17
+  },
+  "distribution_priorites": {
+    "normale": 68,
+    "haute": 28
+  },
+  "doublons_exacts": 0,
+  "doublons_normalises": 0,
+  "len_input_moy": 100.7,
+  "len_input_med": 99.0,
+  "lignes_avec_pii": 11,
+  "risques_prioritaires": [
+    "Nettoyer les informations personnellement identifiables (PII) détectées"
+  ]
+}
