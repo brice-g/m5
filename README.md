@@ -85,3 +85,102 @@ Le déploiement industriel s'articule autour de 3 phases successives visant à g
 * **Phase 1 — Composant Langue (Sprints 1-2)** : Migration SQL $\rightarrow$ Intégration du modèle FastText $\rightarrow$ Script de Backfill par lots de l'historique $\rightarrow$ Exposition des dimensions de langue sur `/predict`.
 * **Phase 2 — Composant Sentiment (Sprints 3-4)** : Intégration de DistilCamembert conditionnée au flux francophone $\rightarrow$ Backfill sentiment $\rightarrow$ Activation du cache d'enrichissement $\rightarrow$ Monitoring de la distribution des classes.
 * **Phase 3 — Routage Prioritaire & Finitions (Sprint 5)** : Implémentation du moteur d'aiguillage $\rightarrow$ Intégration des middlewares de sécurité et Rate Limiting $\rightarrow$ Déploiement des endpoints standalone et du dashboard de suivi des volumes pour le management métier.
+
+## Module 5 — Brief 1 : Déploiement & Industrialisation
+
+### 1. Migration de la Base de Données (SQL)
+
+Afin de stocker les métadonnées issues de la pipeline d'enrichissement IA (langue, sentiment, routage), la structure de la table `demandes` a été mise à jour. 
+
+#### Exécution de la migration
+Pour appliquer la migration manuellement sur votre instance PostgreSQL :
+```bash
+psql -U <user> -d <database_name> -f docs/migration_enrichment.sql
+```
+# Dictionnaire des nouvelles colonnes
+
+Toutes les colonnes ajoutées sont optionnelles (NULLABLE) pour préserver l'intégrité des données historiques.
+La colonne langue est ajoutée si elle n'existe pas encore
+
+| Colonne | Type | Description | Exemple / Valeurs |
+| :--- | :--- | :--- | :--- |
+| **langue** | VARCHAR(5) | Code ISO 639-1 de la langue détectée | 'fr', 'en' |
+| **langue_confidence** | FLOAT | Score de confiance du modèle de langue | 0.98 (entre 0 et 1) |
+| **sentiment** | VARCHAR(10) | Polarité globale du message | 'positif', 'neutre', 'negatif' |
+| **sentiment_score** | FLOAT | Score de confiance du modèle de sentiment | 0.85 |
+| **enriched_at** | TIMESTAMPTZ | Horodatage précis de l'enrichissement | 2026-05-25 11:30:00+02 |
+| **routed_priority** | VARCHAR(20) | File de routage prioritaire attribuée | 'high_intl', 'high_negative', 'normal' |
+
+Un index nommé `idx_demandes_langue` a également été mis en place sur la colonne `langue` pour optimiser les performances des futures requêtes analytiques et de filtrage.
+
+### 3. Instructions de Déploiement Rapide
+
+#### Étape 1 : Préparation de l'environnement
+Configurez vos variables d'environnement (ports, identifiants de BDD) en créant votre fichier `.env` à partir du template : `.env.exemple`
+
+#### Étape 2 : Lancement de la stack complète
+Déployez l'infrastructure globale d'une seule commande. Les dépendances croisées `depends_on (service_healthy)` garantissent que l'API attend la totale disponibilité de la base et de MLflow avant de s'instancier :
+```bash
+make up
+```
+
+#### Étape 3 : Application de la migration SQL
+
+Exécutez la mise à jour structurelle de la base de données directement au sein du conteneur de base de données :
+```bash
+make migrate
+```
+
+### 4. Enregistrement et Gouvernance des Modèles (MLflow)
+
+Pour figer et versionner nos artefacts IA (Classification historique, Détection de langue FastText, et Analyse de sentiment DistilCamembert), lancez le script d'enregistrement automatique :
+```bash
+make register
+```
+
+#### Ce script réalise les actions suivantes :
+
+*   1. Crée un Run MLflow pour encapsuler chaque modèle.
+
+*   2. Logue les métriques du benchmark (Module 4), les hyperparamètres et un tag contenant le hash SHA-256 unique du jeu de données d'entraînement.
+
+*   3. Enregistre les modèles dans le Model Registry sous les noms respectifs : fastia-classification, fastia-language, et fastia-sentiment.
+
+*   4. Promeut automatiquement chaque version validée vers le stage sémantique Production.
+
+### 5. Validation et Tests d'Intégration
+
+Une suite de tests de bout en bout (tests/test_integration_stack.py) a été mise en place pour certifier la conformité de la stack déployée face aux exigences du CTO.
+
+Pour exécuter les tests d'intégration directement au sein de l'environnement conteneurisé :
+```bash
+make test
+```
+
+#### Scénarios validés par les tests d'intégration :
+
+*   1. GET /health : Vérifie l'état de santé opérationnel de la stack (Code HTTP 200).
+
+*   2. POST /predict (Flux FR) : Valide qu'un texte francophone retourne une réponse enrichie complète contenant tous les nouveaux attributs (langue, sentiment, métadonnées de sanitisation).
+
+*   3. POST /predict (Flux EN) : Valide la règle métier du routeur qui aiguille automatiquement les langues non-francophones vers la file de priorité internationale high_intl.
+
+*   1. POST /predict (Sécurité - Homoglyphes) : Confirme que l'étape d'input sanitisation intercepte les attaques de mimétisme visuel Unicode et lève le compteur homoglyphs_replaced > 0.
+
+*   5. POST /enrich : Valide l'endpoint de service pur isolé, qui calcule la langue et le sentiment sans exécuter la classification métier ni le routage.
+
+*   6. GET /models : Confirme l'interconnexion au registre et la visibilité des modèles actifs en mémoire.
+
+*   7. GET /models/language/metrics : S'assure que l'API restitue correctement les scores d'audit et l'historique du dataset de benchmark.
+
+### 6. Commandes utiles du Makefile
+
+| Commande | Description |
+| :--- | :--- |
+| `make up` | Instancie le `.env` si manquant, construit les images et lance la stack en arrière-plan. |
+| `make down` | Arrête et nettoie l'ensemble des conteneurs de la stack. |
+| `make logs` | Affiche les journaux applicatifs (FastAPI, PG, MLflow) en temps réel. |
+| `make migrate` | Injecte le script SQL d'enrichissement dans l'instance PostgreSQL active. |
+| `make register` | Exécute le script de packaging et pousse les modèles dans le registre MLflow. |
+| `make test` | Déclenche la suite complète de tests de bout en bout avec Pytest dans le conteneur api. |
+| `make full` | Lance l'intégralité de la pipeline de traitement de données au sein du conteneur applicatif. |

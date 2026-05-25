@@ -1,7 +1,7 @@
 import argparse
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import pandas as pd
 from loguru import logger
@@ -27,6 +27,13 @@ from src.sources.email_loader import load_mbox
 
 from src.sources.integrate import ingest as integrate_ingest
 from typing import Literal, get_args
+
+from src.api.models import Demande
+# Importation des briques de nettoyage, désinfection et d'enrichissement
+from src.security.input_sanitizer import sanitize 
+from src.pipeline.enrich_language import LanguageEnricher
+from src.pipeline.enrich_sentiment import SentimentEnricher
+from src.pipeline.route import route_demand
 
 # --- Configuration des chemins par défaut ---
 RAW_DATA = "data/raw/dataset_fastia_module1.jsonl"
@@ -227,34 +234,105 @@ def run_ingestion(source_type: str, input_path: str):
         except Exception as e:
             logger.exception(f"Erreur critique lors de l'ingestion unifiée {source_type} : {e}")
             return
+        
+def process_pipeline(db_session, force_enrich: bool = False):
+    """
+    Exécute le traitement complet : Nettoyage -> Sanitize -> Enrichissements -> Routage
+    """
+    logger.info("Démarrage de la pipeline d'enrichissement enrichie.")
+    
+    lang_enricher = LanguageEnricher()
+    sentiment_enricher = SentimentEnricher()
+
+    if force_enrich:
+        demandes = db_session.query(Demande).all()
+        logger.info(f"Mode `--force` actif : Re-traitement des {len(demandes)} demandes.")
+    else:
+        demandes = db_session.query(Demande).filter(Demande.enriched_at.is_(None)).all()
+        logger.info(f"{len(demandes)} nouvelles demandes à enrichir.")
+
+    for demande in demandes:
+        try:
+            # 1. Nettoyage initial (M3)
+            cleaned_text = demande.raw_text.strip()
+            
+            # 2. Désinfection des entrées (M4)
+            sanitization_result = sanitize(cleaned_text)
+            safe_text = sanitization_result.text
+            
+            # 3. Enrichissement : Langue
+            langue, lang_conf = lang_enricher.analyze(safe_text)
+            
+            # 4. Enrichissement : Sentiment
+            sentiment, sent_score = sentiment_enricher.analyze(safe_text, lang=langue)
+            
+            # 5. Calcul de la règle de routage
+            routing = route_demand(langue=langue, sentiment=sentiment, sentiment_score=sent_score)
+            
+            # 6. Mise à jour de l'objet ORM
+            demande.langue = langue
+            demande.langue_confidence = lang_conf
+            demande.sentiment = sentiment
+            demande.sentiment_score = sent_score
+            demande.routed_priority = routing.priority
+            demande.enriched_at = datetime.now(timezone.utc)
+            
+            # On valide chaque demande réussie pour éviter qu'un rollback futur ne l'annule
+            db_session.commit()
+            logger.success(f"Demande ID {demande.id} enrichie avec succès ({routing.priority}).")
+
+        except Exception as e:
+            logger.error(f"Échec du traitement de la demande ID {demande.id}: {e}")
+            # Le rollback n'annule désormais que la demande en cours d'échec
+            db_session.rollback()
+            continue
+
+    logger.info("Pipeline terminée.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Pipeline FastIA")
 
-    # Utilisation de subparsers pour gérer proprement le nouveau mode 'ingest'
+    # Utilisation de subparsers pour gérer proprement les modes
     subparsers = parser.add_subparsers(dest="command", help="Commandes disponibles")
 
+    # Arguments globaux (hors sous-commandes)
     parser.add_argument("--full", action="store_true", help="Exécuter toute la pipeline ")
     parser.add_argument("--input", type=str, help="Dataset brut (mode manuel)")
     parser.add_argument("--output", type=str, help="Dataset nettoyé (mode manuel)")
     
-    # Nouvelle sous-commande 'ingest'
+    # Sous-commande 'ingest'
     ingest_parser = subparsers.add_parser("ingest", help="Ingérer des données externes (Mbox, etc.)")
     ingest_parser.add_argument("--source", type=str, required=True, choices=["email", "web", "chat"], help="Type de source à intégrer")
     ingest_parser.add_argument("--input", type=str, required=True, help="Chemin vers le fichier source (ex: data/raw/emails_fastia.mbox)")
+
+    # Nouvelle sous-commande 'enrich'
+    enrich_parser = subparsers.add_parser("enrich", help="Exécuter la pipeline d'enrichissement et de routage")
+    enrich_parser.add_argument("--force", action="store_true", help="Force le re-calcul des enrichissements existants")
 
     args = parser.parse_args()
     
     try:
         if args.command == "ingest":
             run_ingestion(source_type=args.source, input_path=args.input)
+            
+        elif args.command == "enrich":
+            # 1. Récupération de la session de base de données
+            conn = get_db_connection() 
+            if not conn:
+                logger.error("Impossible de démarrer l'enrichissement : Connexion DB échouée.")
+            else:
+                # Note: Assurez-vous que db_session est bien un objet de session SQLAlchemy compatible query()
+                process_pipeline(db_session=conn, force_enrich=args.force)
+                
         elif args.full:
             run_full_pipeline()
+            
         elif args.input and args.output:
             from .run import run_pipeline
             run_pipeline(args.input, args.output)
+            
         else:
-            logger.error("Utilisez ingest, --full ou spécifiez --input et --output")
+            logger.error("Commande invalide. Utilisez 'ingest', 'enrich', --full, ou spécifiez --input et --output")
             
     except Exception as e:
         logger.exception(f"Échec du pipeline : {e}")
