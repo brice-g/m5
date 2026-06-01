@@ -33,7 +33,7 @@ def wait_for_api_healthy():
 def test_api_health_endpoint():
     response = requests.get(f"{API_URL}/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
+    assert response.json().get("status") == "healthy"
 
 # =========================================================================
 # TEST 2 : POST /predict — Validation d'une réponse FR complète

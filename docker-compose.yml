@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # --- BASE DE DONNÉES POSTGRESQL ---
   db:
@@ -30,15 +28,22 @@ services:
     volumes:
       - mlflow_backend_store:/mlflow/backend
       - mlflow_artifact_store:/mlflow/artifacts
-    command: mlflow server --host 0.0.0.0 --port 5001 --backend-store-uri sqlite:////mlflow/backend/mlflow.db --default-artifact-root /mlflow/artifacts
+    environment:
+      MLFLOW_HTTP_REQUEST_ALLOW_HOST_HEADER_REBINDING: "true"
+      MLFLOW_SERVER_HOST_HEADER_CHECKING: "false"
+    command: mlflow server --host 0.0.0.0 --port 5001 --backend-store-uri sqlite:////mlflow/backend/mlflow.db --artifacts-destination /mlflow/artifacts --serve-artifacts --allowed-hosts "*"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/')"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   # --- API FASTIA ENRICHIE ---
   api:
+    deploy:
+      resources:
+        limits:
+          memory: 10G
     build:
       context: .
       dockerfile: Dockerfile
@@ -48,23 +53,28 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=${DB_USER:-postgres_admin_prod}
-      - DB_PASS=${DB_PASS:-ChAnGeMe_ThIs_Is_SeCrEt_2026!}
-      - DB_NAME=${DB_NAME:-fastia_prod}
-      - MLFLOW_TRACKING_URI=http://mlflow:5001
-      - ENVIRONMENT=production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres_admin_prod}
+      DB_PASS: ${DB_PASS:-ChAnGeMe_ThIs_Is_SeCrEt_2026!}
+      DB_NAME: ${DB_NAME:-fastia_prod}
+      MLFLOW_TRACKING_URI: http://mlflow:5001
+      ENVIRONMENT: production
+      HF_TOKEN: ${HF_TOKEN:-votre_token_hugging_face_ici}
     depends_on:
       db:
         condition: service_healthy
       mlflow:
         condition: service_healthy
+    volumes:
+      - mlflow_artifact_store:/mlflow/artifacts
+      - .:/app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 15s
-      timeout: 5s
+      interval: 120s
+      timeout: 10s
       retries: 3
+      start_period: 120s
 
 volumes:
   postgres_prod_data:

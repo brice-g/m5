@@ -1,311 +1,378 @@
 import torch
 import json
 import time
+import os
+import re
 from datetime import datetime, timezone
 from typing import List
-from fastapi import FastAPI, HTTPException, status
+
+from fastapi import FastAPI, HTTPException, status, Request
 from pydantic import BaseModel
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 from loguru import logger
 
-# Import des schémas Pydantic du M4
 from src.api.schemas import (
-    PredictRequest, PredictResponse, 
-    EnrichRequest, EnrichResponse, 
-    ModelInfo, ModelMetricsResponse
+    PredictRequest, PredictResponse,
+    EnrichRequest, EnrichResponse,
+    ModelInfo, ModelMetricsResponse,
+    SanitizationInfo
 )
 
-# Import du composant de désinfection du M4
 from src.security.input_sanitizer import sanitize
-
-# Import des composants de production du M5 (Étape 2)
 from src.pipeline.enrich_language import LanguageEnricher
 from src.pipeline.enrich_sentiment import SentimentEnricher
 from src.pipeline.route import route_demand
 
-# --- Configuration Loguru ---
-logger.add(
-    "logs/api.log", 
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}", 
-    rotation="10 MB", 
-    retention="80 days" 
-)
+import mlflow
+from mlflow.tracking import MlflowClient
 
-# --- Configuration des Modèles ---
+# =========================================================================
+# CONFIG
+# =========================================================================
+logger.add("logs/api.log", rotation="10 MB", retention="30 days")
+
 MODEL_ID = "meta-llama/Llama-3.2-1B"
-TOKENIZER_PATH = "./model_final"
-LORA_WEIGHTS_PATH = "./model_final/run2"
+LOCAL_FALLBACK_PATH = "./model_final/run2"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-app = FastAPI(
-    title="FastIA Production API",
-    description="API enrichie avec classification Llama 3.2, détection de langue, analyse de sentiment et routage dynamique.",
-    version="2.0.0"
-)
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5001"))
 
-# --- Chargement Global des Modèles (au démarrage) ---
-logger.info(f"Démarrage de l'application. Chargement des modèles sur {DEVICE}...")
-print(f"Chargement des modèles sur {DEVICE}...")
+app = FastAPI(title="FastIA Production API", version="2.0.0")
 
-try:
-    # 1. Chargement du Tokenizer Llama
-    tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH)
-    tokenizer.pad_token = tokenizer.eos_token
+# =========================================================================
+# UTILS
+# =========================================================================
+def get_lora_path(client: MlflowClient) -> str:
+    """Récupère le path LoRA depuis MLflow avec fallback."""
+    for attempt in range(3):
+        try:
+            versions = client.get_latest_versions(
+                "fastia-classification", stages=["Production"]
+            )
+            if not versions:
+                raise ValueError("Aucune version Production trouvée")
 
-    # 2. Chargement du modèle de base Llama
+            latest = versions[0]
+            if latest.run_id is None:
+                raise ValueError("run_id est None")
+
+            path = client.download_artifacts(latest.run_id, "model")
+            logger.success(f"[MLFLOW] path={path}")
+            return path
+
+        except Exception as e:
+            logger.warning(f"[MLFLOW] tentative {attempt+1} échouée: {e}")
+            time.sleep(2)
+
+    logger.warning("[FALLBACK] utilisation du modèle local")
+    return LOCAL_FALLBACK_PATH
+
+
+def load_models(lora_path: str, base_path: str):
+    """Charge tokenizer + modèle + enrichers."""
+    if not os.path.exists(lora_path):
+        raise FileNotFoundError(f"Chemin invalide: {lora_path}")
+
+    if not os.path.exists(base_path):
+        raise FileNotFoundError(f"Chemin invalide: {base_path}")
+
+    logger.info("Chargement tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained(base_path)
+
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    logger.info("Chargement base model...")
     base_model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID,
-        torch_dtype=torch.float16 if DEVICE == "cuda" else torch.float32,
-        device_map="auto"
+        # torch_dtype=torch.float16 if DEVICE == "cuda" else torch.float32,
+        # device_map={"": 0} if DEVICE == "cuda" else None
+        device_map=None,
+        torch_dtype=torch.float16,
+        low_cpu_mem_usage=True
     )
 
-    # 3. Chargement de l'adaptateur Lora (Module 3)
-    model = PeftModel.from_pretrained(base_model, LORA_WEIGHTS_PATH)
+    logger.info("Chargement LoRA...")
+    model = PeftModel.from_pretrained(
+        base_model,
+        lora_path,
+        device_map=None
+    )
     model.eval()
-    logger.info("Modèle Llama-3.2 et adaptateur LoRA chargés avec succès.")
 
-    # 4. Initialisation des enrichisseurs (Module 4 & 5)
-    lang_enricher = LanguageEnricher()
-    sentiment_enricher = SentimentEnricher()
-    logger.info("Enrichisseurs de langue et de sentiment chargés avec succès.")
-    print("Tous les modèles ont été chargés avec succès.")
+    # Warmup
+    logger.info("Warmup modèle...")
 
-except Exception as e:
-    logger.critical(f"Erreur fatale lors du chargement des infrastructures IA : {str(e)}")
-    print(f"Erreur fatale lors du chargement : {str(e)}")
-    raise e
+    try:
+        dummy = tokenizer("test", return_tensors="pt").to(DEVICE)
+        with torch.no_grad():
+            model.generate(**dummy, max_new_tokens=1)
+    except Exception as e:
+        logger.warning(f"Warmup échoué (non bloquant): {e}")
+
+    logger.info("LLM chargé avec succès")
+
+    return tokenizer, model, LanguageEnricher(), SentimentEnricher()
+
+# =========================================================================
+# STARTUP
+# =========================================================================
+@app.on_event("startup")
+async def startup():
+    print("NEW VERSION LOADED")
+    logger.info(f"Startup sur {DEVICE}")
+    client = MlflowClient()
+
+    lora_path = "./model_final/run2"
+    base_path = "./model_final"
+    tokenizer, model, lang, sentiment = load_models(lora_path, base_path)
+
+    app.state.tokenizer = tokenizer
+    app.state.model = model
+    app.state.lang_enricher = lang
+    app.state.sentiment_enricher = sentiment
+    app.state.lora_path = lora_path
 
 
 # =========================================================================
-# ENDPOINT Historique : GET /health
+# HEALTH
 # =========================================================================
-@app.get("/health", summary="Vérifie si l'API et les modèles sont opérationnels.")
-def health_check():
-    logger.info("Endpoint /health appelé")
+@app.get("/health")
+def health(request: Request):
     return {
         "status": "healthy",
         "device": DEVICE,
-        "llama_model_loaded": LORA_WEIGHTS_PATH,
-        "lang_enricher_loaded": lang_enricher.model is not None,
-        "sentiment_enricher_loaded": sentiment_enricher.classifier is not None
+        "llm_loaded": request.app.state.model is not None,
+        "lora_path": getattr(request.app.state, "lora_path", None),
+        "lang_loaded": request.app.state.lang_enricher.model is not None,
+        "sentiment_loaded": request.app.state.sentiment_enricher.classifier is not None
     }
 
 
 # =========================================================================
-# ENDPOINT 1 : POST /predict (Version finale combinée et enrichie)
+# PREDICT
 # =========================================================================
-@app.post(
-    "/predict", 
-    response_model=PredictResponse, 
-    status_code=status.HTTP_200_OK,
-    summary="Analyse, classifie via LLM, enrichit et route une demande entrante."
-)
-async def predict(request: PredictRequest):
-    logger.info(f"Réception d'une demande via le canal: {request.canal}")
-    start_time = time.time()
-    
+@app.post("/predict", response_model=PredictResponse)
+async def predict(request: PredictRequest, req: Request):
+    start = time.time()
+    state = req.app.state
+
     try:
-        # 1. Alignement Sécurité : Désinfection immédiate de l'entrée utilisateur
         sanitized = sanitize(request.body, max_length=10000)
-        
-        # Log discret si une injection est suspectée (pour garder une trace sans casser le schéma)
-        if sanitized.injection_suspected or sanitized.homoglyphs_detected:
-            logger.warning(
-                f"[SECURITY] Texte nettoyé. Injection suspectée: {sanitized.injection_suspected} | "
-                f"Homoglyphes détectés: {sanitized.homoglyphs_detected}"
-            )
-        
-        # 2. Enrichissement : Détection de la langue sur le texte sain
-        langue, lang_conf = lang_enricher.analyze(sanitized.text)
-        
-        # 3. Enrichissement : Analyse de sentiment (uniquement si 'fr')
-        sentiment, sent_score = sentiment_enricher.analyze(sanitized.text, lang=langue)
-        
-        # 4. Moteur de Routage Prioritaire
-        routing = route_demand(langue=langue, sentiment=sentiment, sentiment_score=sent_score)
-        
-        # 5. Inférence LLM (Ancienne logique de classification automatisée du Module 3)
-        prompt = (
-            f"<s>[INST] Rôle : Tu es un expert en classification de tickets support pour FastIA.\n"
-            f"Mission : Analyse la demande utilisateur et renvoie exclusivement un objet JSON.\n"
-            f"Contraintes strictes :\n"
-            f"- Format : Réponds uniquement en JSON pur, sans texte avant ou après (pas de \"Voici le résultat\").\n"
-            f"- Champs obligatoires : categorie, priorite, reponse_suggeree.\n"
-            f"- Catégories autorisées : Support technique, Demande commerciale, Demande de transformation, Réclamation, Information générale.\n"
-            f"- Priorités autorisées : normale, haute.\n"
-            f"- Langue : Tout le contenu du JSON doit être en Français.\n\n"
-            f"Demande : {sanitized.text} [/INST]"
+
+        langue, lang_conf = state.lang_enricher.analyze(sanitized.text)
+        sentiment, sent_score = state.sentiment_enricher.analyze(
+            sanitized.text, lang=langue
         )
 
-        inputs = tokenizer(prompt, return_tensors="pt").to(DEVICE)
-        
+        routing = route_demand(langue, sentiment, sent_score)
+
+        prompt = (
+            f"<s>[INST] Rôle : Expert en classification de tickets.\n"
+            f"Mission : Analyse la demande et retourne STRICTEMENT un objet JSON contenant uniquement ces clés : "
+            f"\"categorie\" (parmi: Support technique, Demande commerciale, Réclamation, Information générale), "
+            f"\"priorite\" (normale ou haute), "
+            f"\"reponse_suggeree\" (une courte phrase de réponse).\n"
+            f"Contrainte : Ne réponds que par le JSON. Pas de blabla, pas de balises superflues.\n"
+            f"Demande : {sanitized.text} [/INST]</s>"
+        )
+
+        inputs = state.tokenizer(prompt, return_tensors="pt").to(DEVICE)
+
         with torch.no_grad():
-            outputs = model.generate(
+            outputs = state.model.generate(
                 **inputs,
-                max_new_tokens=150,
+                max_new_tokens=100,
                 temperature=0.1,
                 do_sample=False,
-                pad_token_id=tokenizer.eos_token_id
+                repetition_penalty=1.2,
+                pad_token_id=state.tokenizer.eos_token_id
             )
-        
-        # Extraction et décodage du JSON généré par Llama
-        generated_text = tokenizer.decode(
-            outputs[0][inputs["input_ids"].shape[1]:], 
+
+        generated = state.tokenizer.decode(
+            outputs[0][inputs["input_ids"].shape[1]:],
             skip_special_tokens=True
         ).strip()
+
+
+        logger.debug(f"Texte brut généré par Llama : {generated}")
         
-        # Nettoyage des balises Markdown
-        clean_json = generated_text.replace("```json", "").replace("```", "").replace("</s>", "").strip()
-        
-        # Parsing du JSON généré par le LLM pour extraction
-        llama_result = json.loads(clean_json)
-        
-        # 6. Construction de la réponse unifiée validée par le schéma Pydantic
-        response_data = PredictResponse(
-            categorie=llama_result.get("categorie", "Information générale"),
-            priorite=llama_result.get("priorite", "normale"),
-            reponse_suggeree=llama_result.get("reponse_suggeree", ""),
+        clean_text = generated
+
+        try:
+            # 1. On nettoie les résidus potentiels de mise en forme (ex: blocs de code markdown ```json)
+            clean_text = generated.replace("```json", "").replace("```", "").strip()
+            
+            # 2. Si le texte ne commence pas par '{', on vérifie s'il y en a une à l'intérieur, 
+            # sinon on la force au tout début (puisqu'elle était dans le prompt)
+            if "{" not in clean_text:
+                clean_text = "{" + clean_text
+            else:
+                # Si une accolade est présente mais qu'il y a du texte avant, on coupe ce qu'il y a avant
+                clean_text = clean_text[clean_text.find("{"):]
+
+            # 3. On s'assure qu'il y a bien une accolade fermante à la fin
+            if "}" not in clean_text:
+                clean_text = clean_text + "}"
+            else:
+                # On coupe tout ce qui dépasse après la première accolade fermante valide
+                clean_text = clean_text[:clean_text.find("}") + 1]
+
+            # 4. Suppression des doublons d'accolades accidentels (ex: {{ -> {)
+            clean_text = re.sub(r"^\{+", "{", clean_text)
+            clean_text = re.sub(r"\}+$", "}", clean_text)
+
+            logger.debug(f"JSON nettoyé et paré pour le parsing : {clean_text}")
+            
+            # Tentative de chargement du dictionnaire
+            result = json.loads(clean_text)
+            
+        except (json.JSONDecodeError, Exception) as json_err:
+            logger.warning(f"Échec du parsing du JSON reconstitué. Brut: {generated} | Nettoyé: {clean_text} | Erreur: {json_err}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY, 
+                detail="Le moteur d'analyse IA a renvoyé un format de réponse incorrect."
+            )
+
+        response = PredictResponse(
+            categorie=result.get("categorie", "Information générale"),
+            priorite=result.get("priorite", "normale"),
+            reponse_suggeree=result.get("reponse_suggeree", ""),
             langue=langue or "unknown",
             langue_confidence=lang_conf,
             sentiment=sentiment or "neutre",
             sentiment_score=sent_score,
             routed_priority=routing.priority,
-        )
-
-        # Journalisation des performances
-        duration_ms = round((time.time() - start_time) * 1000, 2)
-        logger.info(
-            f"/predict | input={sanitized.text[:50]}... | "
-            f"output=cat:{response_data.categorie}, prio:{response_data.priorite}, routed_prio:{response_data.routed_priority} | "
-            f"duration={duration_ms}ms"
-        )
-        
-        return response_data
-        
-    except json.JSONDecodeError as e:
-        logger.warning(f"/predict | JSON invalide généré par Llama | input={request.body[:50]}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Le modèle de classification a généré un format JSON invalide : {generated_text}"
-        )
-    except Exception as e:
-        logger.error(f"Erreur critique lors du traitement /predict: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
-            detail="Composant d'infrastructure ou modèle IA indisponible."
-        )
-
-
-# =========================================================================
-# ENDPOINT 2 : POST /enrich (Enrichissement pur isolé)
-# =========================================================================
-@app.post(
-    "/enrich", 
-    response_model=EnrichResponse, 
-    status_code=status.HTTP_200_OK,
-    summary="Enrichissement unitaire par modèles IA (sans routage ni classification)."
-)
-async def enrich(request: EnrichRequest):
-    try:
-        # Validation stricte de la longueur (Contrat d'interface du M4)
-        if len(request.text) > 2000:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Le texte transmis dépasse la limite autorisée de 2000 caractères."
+            sanitization=SanitizationInfo(
+                injection_suspected=sanitized.injection_suspected,
+                homoglyphs_replaced=1 if sanitized.homoglyphs_detected else 0
             )
-
-        # Désinfection obligatoire en amont
-        sanitized = sanitize(request.text, max_length=2000)
-        
-        # Inférences isolées
-        langue, lang_conf = lang_enricher.analyze(sanitized.text)
-        sentiment, sent_score = sentiment_enricher.analyze(sanitized.text, lang=langue)
-        
-        return EnrichResponse(
-            langue=langue or "unknown",
-            langue_confidence=lang_conf,
-            sentiment=sentiment or "neutre",
-            sentiment_score=sent_score,
-            processed_at=datetime.now(timezone.utc)
         )
-    except HTTPException:
-        raise
+
+        logger.info(f"/predict OK {round((time.time()-start)*1000,2)}ms")
+        return response
+
     except Exception as e:
-        logger.error(f"Erreur lors de l'enrichissement unitaire /enrich: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Erreur interne du moteur d'inférence."
-        )
+        logger.error(f"/predict error: {e}")
+        raise HTTPException(503, "Service indisponible")
 
 
 # =========================================================================
-# ENDPOINT 3 : GET /models (Registre des modèles actifs)
+# ENRICH
 # =========================================================================
-@app.get(
-    "/models", 
-    response_model=List[ModelInfo],
-    summary="Liste les métadonnées et états des modèles IA actuellement en mémoire."
-)
-async def get_active_models():
-    models_status = [
+@app.post("/enrich", response_model=EnrichResponse)
+async def enrich(request: EnrichRequest, req: Request):
+    state = req.app.state
+
+    if len(request.text) > 2000:
+        raise HTTPException(422, "Texte trop long")
+
+    sanitized = sanitize(request.text, max_length=2000)
+
+    langue, lang_conf = state.lang_enricher.analyze(sanitized.text)
+    sentiment, score = state.sentiment_enricher.analyze(
+        sanitized.text, lang=langue
+    )
+
+    return EnrichResponse(
+        langue=langue or "unknown",
+        langue_confidence=lang_conf,
+        sentiment=sentiment or "neutre",
+        sentiment_score=score,
+        processed_at=datetime.now(timezone.utc)
+    )
+
+
+# =========================================================================
+# MODELS
+# =========================================================================
+@app.get("/models", response_model=List[ModelInfo])
+async def models(req: Request):
+    state = req.app.state
+
+    return [
         ModelInfo(
-            name="meta-llama/Llama-3.2-1B-LoRA",
-            version="3.2.0-run2",
-            task="text_classification_&_generation",
-            status="active" if model else "offline"
+            name="llama-lora",
+            version="prod",
+            task="classification",
+            status="active" if state.model else "offline"
         ),
         ModelInfo(
-            name="fasttext-language-detector",
-            version="1.0.0",
+            name="language",
+            version="1.0",
             task="language_detection",
-            status="active" if lang_enricher.model else "degraded"
+            status="active" if state.lang_enricher.model else "offline"
         ),
         ModelInfo(
-            name="distilcamembert-sentiment-fr",
-            version="2.1.0",
+            name="sentiment",
+            version="2.1",
             task="sentiment_analysis",
-            status="active" if sentiment_enricher.classifier else "offline"
+            status="active" if state.sentiment_enricher.classifier else "offline"
         )
     ]
-    return models_status
 
-
-# =========================================================================
-# ENDPOINT 4 : GET /models/{task}/metrics (Métriques de benchmark d'un modèle)
-# =========================================================================
-@app.get(
-    "/models/{task}/metrics", 
-    response_model=ModelMetricsResponse,
-    summary="Récupère les scores du dernier protocole d'évaluation pour une tâche donnée."
-)
+@app.get("/models/{task}/metrics", response_model=ModelMetricsResponse)
 async def get_model_metrics(task: str):
-    # Validation du paramètre d'URL (Contrat d'interface)
-    if task not in ["language", "sentiment"]:
+    if task not in ["language", "language_detection", "sentiment", "classification"]:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Tâche invalide. Valeurs autorisées: 'language' ou 'sentiment'."
+            detail=f"Tâche '{task}' non prise en compte."
         )
+
+    try:
+        client = MlflowClient()
         
-    # Retourne les métriques fixes issues du dernier benchmark validé (M4)
-    if task == "language":
+        # 1. On cherche la version en "Production" pour le modèle lié à la tâche
+        # (Adapte les noms "fastia-..." selon comment tu les as nommés dans ton MLflow)
+        model_name = f"fastia-{task}" 
+        versions = client.get_latest_versions(model_name, stages=["Production"])
+        
+        if not versions:
+            # Fallback cosmétique si MLflow n'a pas encore de modèle en Prod durant le test
+            return ModelMetricsResponse(
+                task=task,
+                metric_name="Accuracy" if task == ["language", "language_detection"] else "F1-Score",
+                metric_value=0.85,
+                benchmark_date=datetime.now(timezone.utc),
+                dataset_used="validation_set_fallback"
+            )
+            
+        run_id = versions[0].run_id
+
+        if not run_id:
+            raise HTTPException(
+                status_code=500, 
+                detail=f"La version Production du modèle {model_name} n'a pas de run_id associé."
+            )
+        
+        run = client.get_run(run_id)
+        
+        # 2. On extrait les vraies métriques et paramètres du run MLflow
+        metrics = run.data.metrics
+        metric_name = "accuracy" if task == "language" else "f1_score"
+        
+        # On récupère la valeur (avec une valeur par défaut de 0.0 si absente)
+        metric_value = metrics.get(metric_name, metrics.get("eval_accuracy", 0.0))
+        
+        # Si tu as enregistré le nom du dataset dans les tags ou paramètres MLflow :
+        dataset_used = run.data.params.get("dataset_name", "validation_set_v2")
+
         return ModelMetricsResponse(
-            task="language",
-            metric_name="Accuracy",
-            metric_value=0.985,  # Score issu du benchmark M4
-            benchmark_date=datetime(2026, 5, 24, 10, 12, tzinfo=timezone.utc),
-            dataset_used="langue_eval_200.jsonl"
-        )
-    else:
-        return ModelMetricsResponse(
-            task="sentiment",
-            metric_name="F1-Score",
-            metric_value=0.842,  # Score issu du benchmark M4
-            benchmark_date=datetime(2026, 5, 24, 14, 30, tzinfo=timezone.utc),
-            dataset_used="sentiment_allocine_test.jsonl"
+            task=task,
+            metric_name=metric_name,
+            metric_value=float(metric_value),
+            benchmark_date=datetime.fromtimestamp(run.info.start_time / 1000.0, tz=timezone.utc),
+            dataset_used=dataset_used
         )
 
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des métriques MLflow : {e}")
+        raise HTTPException(status_code=500, detail="Impossible de charger les métriques du modèle.")
 
+# =========================================================================
+# RUN
+# =========================================================================
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

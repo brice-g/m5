@@ -30,4 +30,4 @@ RUN mkdir -p logs
 EXPOSE 8000
 
 # Lancement de l'API avec les workers requis
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

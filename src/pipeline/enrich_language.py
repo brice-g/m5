@@ -4,7 +4,7 @@ from typing import Tuple, Optional
 from loguru import logger
 import fasttext
 
-# Configuration du modèle (à adapter selon le chemin exact de vos artefacts)
+# Configuration du modèle
 MODEL_PATH = "library/lid.176.bin"
 
 class LanguageEnricher:

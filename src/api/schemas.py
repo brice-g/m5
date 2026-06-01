@@ -6,6 +6,11 @@ from datetime import datetime
 # REQUÊTES (Inputs)
 # ==========================================
 
+class SanitizationInfo(BaseModel):
+    """Sous-structure pour les métriques de sécurité / désinfection."""
+    injection_suspected: bool = Field(..., description="Flag indiquant si une tentative d'injection a été détectée.")
+    homoglyphs_replaced: int = Field(..., description="Nombre de caractères homoglyphes nettoyés.")
+
 class PredictRequest(BaseModel):
     """Payload d'entrée pour la prédiction et l'enrichissement global."""
     body: str = Field(..., min_length=1, max_length=10000, description="Corps du texte de la demande utilisateur brut.")
@@ -31,6 +36,7 @@ class PredictResponse(BaseModel):
     sentiment: str = Field(..., description="Classe de sentiment (positif, neutre, negatif) via DistilCamembert.")
     sentiment_score: float = Field(..., ge=0.0, le=1.0, description="Score de confiance associé à l'analyse de sentiment.")
     routed_priority: str = Field(..., description="Niveau de priorité finale calculé par le moteur de routage (high_intl, high_negative, normal).")
+    sanitization: SanitizationInfo = Field(..., description="Résultats de l'analyse de sécurité de l'input.")
 
 class EnrichResponse(BaseModel):
     """Payload de sortie de l'analyse IA isolée (sans logique métier)."""

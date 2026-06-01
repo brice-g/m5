@@ -9,6 +9,6 @@ env/
 .gitignore
 logs/
 .pytest_cache/
-tests/
+#tests/
 # On exclut les checkpoints volumineux si tu en as
 **/checkpoint-* ```

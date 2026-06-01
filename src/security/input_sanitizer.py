@@ -10,17 +10,35 @@ class SanitizedInput(BaseModel):
     homoglyphs_detected: bool = Field(..., description="Indique si des substitutions d'homoglyphes ont eu lieu.")
     injection_suspected: bool = Field(..., description="Indique si un pattern d'injection de prompt a été détecté.")
 
-# Table de correspondance pour les homoglyphes cyrilliques courants imitants le latin
-HOMOGLYPH_MAP = {
-    'а': 'a', 'с': 'c', 'е': 'e', 'о': 'o', 'р': 'p', 'х': 'x', 'у': 'y',
-    'А': 'A', 'С': 'C', 'Е': 'E', 'О': 'O', 'Р': 'P', 'Х': 'X', 'У': 'Y'
-}
+def get_universal_homoglyph_mapping() -> dict:
+    """
+    Génère dynamiquement un dictionnaire complet de correspondances pour les homoglyphes
+    les plus fréquents (UTS #39) des blocs Cyrillique et Grec imitant le Latin.
+    """
+    # Table de correspondance universelle (Squelette UTS #39 pour la similarité parfaite)
+    raw_pairs = {
+        # Cyrillique minuscules et majuscules
+        'а': 'a', 'б': '6', 'в': 'b', 'г': 'r', 'д': 'g', 'е': 'e', 'ж': 'zh', 'з': '3',
+        'и': 'u', 'й': 'u', 'к': 'k', 'л': 'n', 'м': 'm', 'н': 'h', 'о': 'o', 'п': 'n',
+        'р': 'p', 'с': 'c', 'т': 't', 'у': 'y', 'ф': 'o', 'х': 'x', 'ц': 'u', 'ч': 'u',
+        'ш': 'w', 'щ': 'w', 'ъ': 'b', 'ы': 'bl', 'ь': 'b', 'э': 'e', 'ю': 'o', 'я': 'r',
+        'А': 'A', 'В': 'B', 'Г': 'G', 'Е': 'E', 'З': '3', 'К': 'K', 'М': 'M', 'Н': 'H',
+        'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'У': 'Y', 'Х': 'X', 'Ш': 'W',
+        # Grec courants
+        'α': 'a', 'β': 'b', 'γ': 'y', 'ε': 'e', 'ι': 'i', 'κ': 'k', 'ν': 'v', 'ο': 'o',
+        'ρ': 'r', 'τ': 't', 'υ': 'u', 'χ': 'x', 'ω': 'w', 'Α': 'A', 'Β': 'B', 'Ε': 'E',
+        'Ζ': 'Z', 'Η': 'H', 'Ι': 'I', 'Κ': 'K', 'Μ': 'M', 'Ν': 'N', 'Ο': 'O', 'Ρ': 'P',
+        'Τ': 'T', 'Υ': 'Y', 'Φ': 'F', 'Χ': 'X'
+    }
+    return raw_pairs
+
+UNIVERSAL_HOMOGLYPH_MAP = get_universal_homoglyph_mapping()
 
 def sanitize(text: str, max_length: int = 2000) -> SanitizedInput:
     """
     Nettoie une entrée utilisateur en amont des modèles d'IA.
     
-    - Détection et remplacement des homoglyphes (Cyrillique vers Latin & Normalisation NFKC)
+    - Détection et remplacement universel des homoglyphes (Standard UTS #39 Confusables)
     - Suppression des caractères de contrôle invisibles
     - Troncature sécurisée à une longueur max
     - Détection non-bloquante de patterns d'injections
@@ -37,36 +55,54 @@ def sanitize(text: str, max_length: int = 2000) -> SanitizedInput:
     original_length = len(text)
     homoglyphs_detected = False
     
-    # 1. Suppression des caractères de contrôle (U+0000 à U+001F) sauf whitespace standard (\n, \r, \t)
-    cleaned_text = "".join(ch for ch in text if ord(ch) >= 32 or ch in "\n\r\t")
+    # 1. Suppression des caractères de contrôle invisibles (U+0000 à U+001F, U+007F-009F)
+    cleaned_chars = []
+    for ch in text:
+        category = unicodedata.category(ch)
+        if category in ("Cc", "Cf") and ch not in "\n\r\t":
+            continue
+        cleaned_chars.append(ch)
+    cleaned_text = "".join(cleaned_chars)
 
-    # 2. Détection avancée et remplacement des homoglyphes
+    # 2. Remplacement et Détection Universelle des Homoglyphes
     processed_chars = []
     for ch in cleaned_text:
-        # Remplacement direct via notre map d'homoglyphes cyrilliques
-        if ch in HOMOGLYPH_MAP:
-            processed_chars.append(HOMOGLYPH_MAP[ch])
+        # Cas 1 : Le caractère est identifié dans la table universelle des confusables UTS #39
+        if ch in UNIVERSAL_HOMOGLYPH_MAP:
+            processed_chars.append(UNIVERSAL_HOMOGLYPH_MAP[ch])
             homoglyphs_detected = True
             continue
-            
-        # Détection générique par nom Unicode (ex: si une lettre isolée est "CYRILLIC" ou "GREEK")
+
         try:
             ch_name = unicodedata.name(ch)
-            if "CYRILLIC" in ch_name or "GREEK" in ch_name:
-                homoglyphs_detected = True
         except ValueError:
-            pass # Caractère sans nom officiel
-            
-        processed_chars.append(ch)
+            processed_chars.append(ch)
+            continue
 
-    # Reconstruction et application de NFKC pour les ligatures/variantes de compatibilité
+        # Cas 2 : Détection dynamique pour les autres blocs alternatifs (Symboles mathématiques, etc.)
+        if any(script in ch_name for script in ["CYRILLIC", "GREEK", "CHEROKEE", "MATHEMATICAL"]):
+            homoglyphs_detected = True
+            
+            # Application de NFKD pour extraire le squelette de compatibilité (ex: symboles mathématiques 𝑩 -> B)
+            nfkd_form = unicodedata.normalize('NFKD', ch)
+            ascii_equivalent = nfkd_form.encode('ascii', 'ignore').decode('ascii')
+            
+            if ascii_equivalent:
+                processed_chars.append(ascii_equivalent)
+            else:
+                # Si aucune projection n'est possible, on l'omet pour sécuriser le LLM sans altérer la sémantique
+                processed_chars.append("")
+        else:
+            processed_chars.append(ch)
+
+    # Reconstruction et normalisation finale NFKC pour stabiliser le Tokenizer
     intermediary_text = "".join(processed_chars)
     normalized_text = unicodedata.normalize('NFKC', intermediary_text)
     
-    if normalized_text != intermediary_text:
+    if normalized_text != cleaned_text:
         homoglyphs_detected = True
 
-    # 3. Détection de patterns d'injection (Regex insensible à la casse)
+    # 3. Détection de patterns d'injection de prompt
     injection_keywords = [
         r"\bignore\b", 
         r"\boublie\b", 
@@ -77,7 +113,7 @@ def sanitize(text: str, max_length: int = 2000) -> SanitizedInput:
     injection_pattern = re.compile("|".join(injection_keywords), re.IGNORECASE)
     injection_suspected = bool(injection_pattern.search(normalized_text))
 
-    # 4. Troncature à la longueur maximale configurée
+    # 4. Troncature sécurisée
     was_truncated = len(normalized_text) > max_length
     final_text = normalized_text[:max_length]
 

@@ -5,11 +5,11 @@ from loguru import logger
 from transformers import pipeline
 
 class SentimentEnricher:
-    def __init__(self, model_name_or_path: str = "tblard/tf-allocine", default_threshold: float = 0.5):
+    def __init__(self, model_name_or_path: str = "cmarkea/distilcamembert-base-sentiment", default_threshold: float = 0.5):
         self.threshold = default_threshold
         self._cache = {}
         try:
-            # Chargement du pipeline Hugging Face (ex: CamemBERT fine-tuned)
+            # Chargement du pipeline Hugging Face avec le modèle distilcamembert_base_sentiment
             self.classifier = pipeline("text-classification", model=model_name_or_path, device=-1)
             logger.info(f"Modèle de sentiment {model_name_or_path} chargé avec succès.")
         except Exception as e:
@@ -21,23 +21,30 @@ class SentimentEnricher:
 
     def _map_label(self, raw_label: str) -> str:
         """
-        Mapping des sorties du modèle. 
-        S'adapte aux modèles binaires (Allocine) ou multi-classes.
+        Mapping adapté spécifiquement pour cmarkea/distilcamembert-base-sentiment.
+        Ce modèle utilise une classification à 5 niveaux (de 1 à 5 étoiles ou LABEL_0 à LABEL_4).
         """
+        # Nettoyage de la chaîne reçue
+        clean_label = raw_label.upper().replace(" ", "").replace("-", "").rstrip("S")
+
         mapping = {
-            "POSITIVE": "positif",
-            "NEGATIVE": "negatif",
-            "NEUTRAL": "neutre",
-            "LABEL_2": "positif",
-            "LABEL_1": "neutre",
-            "LABEL_0": "negatif",
-            "1-star": "negatif",
-            "2-star": "negatif",
-            "3-star": "neutre",
-            "4-star": "positif",
-            "5-star": "positif"
+            # Si le modèle renvoie des labels brute d'index (0 à 4)
+            "LABEL_0": "negatif",  # 1 étoile
+            "LABEL_1": "negatif",  # 2 étoiles
+            "LABEL_2": "neutre",   # 3 étoiles
+            "LABEL_3": "positif",  # 4 étoiles
+            "LABEL_4": "positif",  # 5 étoiles
+            
+            # Si le modèle renvoie le format textuel d'étoiles
+            "1STAR": "negatif",
+            "2STAR": "negatif",
+            "3STAR": "neutre",
+            "4STAR": "positif",
+            "5STAR": "positif",
         }
-        return mapping.get(raw_label.upper(), "neutre")
+
+        # Si le label n'est pas trouvé, on renvoie "neutre" par défaut
+        return mapping.get(clean_label, "neutre")
 
     def analyze(self, text: str, lang: Optional[str]) -> Tuple[Optional[str], float]:
         if not text or not text.strip():
@@ -64,9 +71,17 @@ class SentimentEnricher:
         try:
             # Inférence
             outputs = self.classifier(text.strip())[0]
-            sentiment_mapped = self._map_label(outputs['label'])
             score = float(outputs['score'])
+
+            # Application de la règle du seuil de sécurité
+            if score < self.threshold:
+                logger.warning(f"[LOW CONFIDENCE] Score de {score:.2f} inférieur au seuil ({self.threshold}). Sentiment forcé à 'neutre'.")
+                sentiment_mapped = "neutre"
+            else:
+                sentiment_mapped = self._map_label(outputs['label'])
+                
             result = (sentiment_mapped, score)
+            
         except Exception as e:
             logger.error(f"[ERROR INFERENCE] Échec de l'analyse de sentiment ({e}) pour '{truncated_text}'")
             result = (None, 0.0)
